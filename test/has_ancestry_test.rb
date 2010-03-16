@@ -4,10 +4,12 @@ require File.dirname(__FILE__) + '/test_helper.rb'
 
 class TestNode < ActiveRecord::Base
   has_ancestry :cache_depth => true, :depth_cache_column => :depth_cache
+  attr_protected :ancestry
 end
 
 class AlternativeTestNode < ActiveRecord::Base
   has_ancestry :ancestry_column => :alternative_ancestry, :orphan_strategy => :rootify
+  attr_protected :ancestry
 end
 
 class ActsAsTreeTestNode < ActiveRecord::Base
@@ -25,7 +27,7 @@ end
 
 class ActsAsTreeTest < ActiveSupport::TestCase
   load_schema
-  
+
   def setup_test_nodes model, level, quantity
     model.delete_all
     create_test_nodes model, nil, level, quantity
@@ -43,26 +45,26 @@ class ActsAsTreeTest < ActiveSupport::TestCase
   def test_default_ancestry_column
     assert_equal :ancestry, TestNode.ancestry_column
   end
-  
+
   def test_non_default_ancestry_column
     assert_equal :alternative_ancestry, AlternativeTestNode.ancestry_column
   end
-  
+
   def test_setting_ancestry_column
     TestNode.ancestry_column = :ancestors
     assert_equal :ancestors, TestNode.ancestry_column
     TestNode.ancestry_column = :ancestry
     assert_equal :ancestry, TestNode.ancestry_column
   end
-  
+
   def test_default_orphan_strategy
     assert_equal :destroy, TestNode.orphan_strategy
   end
-  
+
   def test_non_default_orphan_strategy
     assert_equal :rootify, AlternativeTestNode.orphan_strategy
   end
-  
+
   def test_setting_orphan_strategy
     TestNode.orphan_strategy = :rootify
     assert_equal :rootify, TestNode.orphan_strategy
@@ -132,7 +134,7 @@ class ActsAsTreeTest < ActiveSupport::TestCase
       assert_equal descendants.map(&:id), lvl0_node.descendant_ids
       assert_equal descendants, lvl0_node.descendants
       assert_equal [lvl0_node] + descendants, lvl0_node.subtree
-      
+
       lvl0_children.each do |lvl1_node, lvl1_children|
         # Ancestors assertions
         assert_equal [lvl0_node.id], lvl1_node.ancestor_ids
@@ -200,13 +202,13 @@ class ActsAsTreeTest < ActiveSupport::TestCase
       end
     end
   end
-  
+
   def test_named_scopes
     roots = setup_test_nodes TestNode, 3, 3
 
     # Roots assertion
     assert_equal roots.map(&:first), TestNode.roots.all
-    
+
     TestNode.all.each do |test_node|
       # Assertions for ancestors_of named scope
       assert_equal test_node.ancestors, TestNode.ancestors_of(test_node)
@@ -225,7 +227,7 @@ class ActsAsTreeTest < ActiveSupport::TestCase
       assert_equal test_node.siblings, TestNode.siblings_of(test_node.id)
     end
   end
-  
+
   def test_ancestroy_column_validation
     node = TestNode.create
     ['3', '10/2', '1/4/30', nil].each do |value|
@@ -237,7 +239,7 @@ class ActsAsTreeTest < ActiveSupport::TestCase
       node.valid?; assert node.errors.invalid?(TestNode.ancestry_column)
     end
   end
-  
+
   def test_descendants_move_with_node
     root1, root2, root3 = setup_test_nodes(TestNode, 3, 3).map(&:first)
      assert_no_difference 'root1.descendants.size' do
@@ -261,7 +263,7 @@ class ActsAsTreeTest < ActiveSupport::TestCase
       end
     end
   end
-  
+
   def test_orphan_rootify_strategy
     TestNode.orphan_strategy = :rootify
     root = setup_test_nodes(TestNode, 3, 3).first.first
@@ -296,9 +298,9 @@ class ActsAsTreeTest < ActiveSupport::TestCase
     assert_nothing_raised Ancestry::AncestryException do
       root.children.first.children.first.destroy
     end
-    
+
   end
-  
+
   def test_integrity_checking
     # Check that there are no errors on a valid data set
     setup_test_nodes(TestNode, 3, 3)
@@ -311,7 +313,7 @@ class ActsAsTreeTest < ActiveSupport::TestCase
     assert_raise Ancestry::AncestryIntegrityException do
       TestNode.check_ancestry_integrity!
     end
-    
+
     # Check detection of non-existent ancestor
     setup_test_nodes(TestNode, 3, 3).first.first.update_attribute TestNode.ancestry_column, 35
     assert_raise Ancestry::AncestryIntegrityException do
@@ -327,7 +329,12 @@ class ActsAsTreeTest < ActiveSupport::TestCase
 
     # Check detection of conflicting parent id
     TestNode.destroy_all
-    TestNode.create!(TestNode.ancestry_column => TestNode.create!(TestNode.ancestry_column => TestNode.create!(TestNode.ancestry_column => nil).id).id)
+    node3 = TestNode.create!
+    node3.update_attribute(TestNode.ancestry_column, nil)
+    node2 = TestNode.create!
+    node2.update_attribute(TestNode.ancestry_column, node3.id)
+    node1 = TestNode.create!
+    node1.update_attribute(TestNode.ancestry_column, node2.id)
     assert_raise Ancestry::AncestryIntegrityException do
       TestNode.check_ancestry_integrity!
     end
@@ -341,13 +348,13 @@ class ActsAsTreeTest < ActiveSupport::TestCase
     assert_nothing_raised do
       TestNode.check_ancestry_integrity!
     end
-  end    
+  end
 
   def test_integrity_restoration
     # Check that integrity is restored for invalid format for ancestry column
     setup_test_nodes(TestNode, 3, 3).first.first.update_attribute TestNode.ancestry_column, 'invalid_ancestry'
     assert_integrity_restoration
-    
+
     # Check that integrity is restored for non-existent ancestor
     setup_test_nodes(TestNode, 3, 3).first.first.update_attribute TestNode.ancestry_column, 35
     assert_integrity_restoration
@@ -359,7 +366,12 @@ class ActsAsTreeTest < ActiveSupport::TestCase
 
     # Check that integrity is restored for conflicting parent id
     TestNode.destroy_all
-    TestNode.create!(TestNode.ancestry_column => TestNode.create!(TestNode.ancestry_column => TestNode.create!(TestNode.ancestry_column => nil).id).id)
+    node3 = TestNode.create!
+    node3.update_attribute(TestNode.ancestry_column, nil)
+    node2 = TestNode.create!
+    node2.update_attribute(TestNode.ancestry_column, node3.id)
+    node1 = TestNode.create!
+    node1.update_attribute(TestNode.ancestry_column, node2.id)
     assert_integrity_restoration
   end
   
