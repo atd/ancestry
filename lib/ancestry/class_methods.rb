@@ -80,7 +80,7 @@ module Ancestry
         # ... set its ancestry to nil if invalid
         if node.errors.invalid? node.class.ancestry_column
           node.without_ancestry_callbacks do
-            node.update_attributes :ancestry => nil
+            node.update_attribute(node.class.ancestry_column, nil)
           end
         end
         # ... save parent of this node in parents array if it exists
@@ -91,7 +91,7 @@ module Ancestry
         until parent.nil? || parent == node.id
           parent = parents[parent]
         end
-        parents[node.id] = nil if parent == node.id 
+        parents[node.id] = nil if parent == node.id
       end
       # For each node ...
       self.base_class.all.each do |node|
@@ -101,7 +101,7 @@ module Ancestry
           ancestry, parent = if ancestry.nil? then parent else "#{parent}/#{ancestry}" end, parents[parent]
         end
         node.without_ancestry_callbacks do
-          node.update_attributes node.ancestry_column => ancestry
+          node.update_attribute(node.class.ancestry_column, ancestry)
         end
       end
     end
