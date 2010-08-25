@@ -482,13 +482,13 @@ class ActsAsTreeTest < ActiveSupport::TestCase
 
     # Assert it has 5 children
     roots.each do |parent|
-      assert 5, parent.children.count
+      assert_equal 5, parent.children.count
       parent.children.each do |parent|
-        assert 5, parent.children.count
+        assert_equal 5, parent.children.count
         parent.children.each do |parent|
-          assert 5, parent.children.count
+          assert_equal 5, parent.children.count
           parent.children.each do |parent|
-            assert 0, parent.children.count
+            assert_equal 0, parent.children.count
           end
         end
       end
