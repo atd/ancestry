@@ -1,6 +1,7 @@
 require File.dirname(__FILE__) + '/test_helper.rb'
 
 # Setup the required models for all test cases
+load_schema
 
 class TestNode < ActiveRecord::Base
   has_ancestry :cache_depth => true, :depth_cache_column => :depth_cache
@@ -26,8 +27,6 @@ class TestNodeSub2 < TestNode
 end
 
 class ActsAsTreeTest < ActiveSupport::TestCase
-  load_schema
-
   def setup_test_nodes model, level, quantity
     model.delete_all
     create_test_nodes model, nil, level, quantity
@@ -207,36 +206,36 @@ class ActsAsTreeTest < ActiveSupport::TestCase
     roots = setup_test_nodes TestNode, 3, 3
 
     # Roots assertion
-    assert_equal roots.map(&:first), TestNode.roots.all
+    assert_equal roots.map(&:first).to_a, TestNode.roots.all.to_a
 
     TestNode.all.each do |test_node|
       # Assertions for ancestors_of named scope
-      assert_equal test_node.ancestors, TestNode.ancestors_of(test_node)
-      assert_equal test_node.ancestors, TestNode.ancestors_of(test_node.id)
-      # Assertions for children_of named scope
-      assert_equal test_node.children, TestNode.children_of(test_node)
-      assert_equal test_node.children, TestNode.children_of(test_node.id)
-      # Assertions for descendants_of named scope
-      assert_equal test_node.descendants, TestNode.descendants_of(test_node)
-      assert_equal test_node.descendants, TestNode.descendants_of(test_node.id)
-      # Assertions for subtree_of named scope
-      assert_equal test_node.subtree, TestNode.subtree_of(test_node)
-      assert_equal test_node.subtree, TestNode.subtree_of(test_node.id)
-      # Assertions for siblings_of named scope
-      assert_equal test_node.siblings, TestNode.siblings_of(test_node)
-      assert_equal test_node.siblings, TestNode.siblings_of(test_node.id)
+      assert_equal test_node.ancestors.to_a, TestNode.ancestors_of(test_node).to_a
+      assert_equal test_node.ancestors.to_a, TestNode.ancestors_of(test_node.id).to_a
+      # Assertions for children_of named scope.to_a
+      assert_equal test_node.children.to_a, TestNode.children_of(test_node).to_a
+      assert_equal test_node.children.to_a, TestNode.children_of(test_node.id).to_a
+      # Assertions for descendants_of named scope.to_a
+      assert_equal test_node.descendants.to_a, TestNode.descendants_of(test_node).to_a
+      assert_equal test_node.descendants.to_a, TestNode.descendants_of(test_node.id).to_a
+      # Assertions for subtree_of named scope.to_a
+      assert_equal test_node.subtree.to_a, TestNode.subtree_of(test_node).to_a
+      assert_equal test_node.subtree.to_a, TestNode.subtree_of(test_node.id).to_a
+      # Assertions for siblings_of named scope.to_a
+      assert_equal test_node.siblings.to_a, TestNode.siblings_of(test_node).to_a
+      assert_equal test_node.siblings.to_a, TestNode.siblings_of(test_node.id).to_a
     end
   end
 
   def test_ancestroy_column_validation
     node = TestNode.create
     ['3', '10/2', '1/4/30', nil].each do |value|
-      node.write_attribute TestNode.ancestry_column, value
-      node.valid?; assert !node.errors.invalid?(TestNode.ancestry_column)
+      node.send(:write_attribute, TestNode.ancestry_column, value)
+      node.valid?; assert !node.errors[TestNode.ancestry_column].any?
     end
     ['1/3/', '/2/3', 'a', 'a/b', '-34', '/54'].each do |value|
-      node.write_attribute TestNode.ancestry_column, value
-      node.valid?; assert node.errors.invalid?(TestNode.ancestry_column)
+      node.send(:write_attribute, TestNode.ancestry_column, value)
+      node.valid?; assert node.errors[TestNode.ancestry_column].any?
     end
   end
 
@@ -483,13 +482,13 @@ class ActsAsTreeTest < ActiveSupport::TestCase
 
     # Assert it has 5 children
     roots.each do |parent|
-      assert 5, parent.children.count
+      assert_equal 5, parent.children.count
       parent.children.each do |parent|
-        assert 5, parent.children.count
+        assert_equal 5, parent.children.count
         parent.children.each do |parent|
-          assert 5, parent.children.count
+          assert_equal 5, parent.children.count
           parent.children.each do |parent|
-            assert 0, parent.children.count
+            assert_equal 0, parent.children.count
           end
         end
       end
